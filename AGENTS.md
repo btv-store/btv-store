@@ -28,3 +28,12 @@ use the editor.
   own key and store it in Secrets.
 - **Secrets.** Lovable manages them. Do not put secret values in the repo.
 <!-- LOVABLE:END -->
+
+## Project rules
+
+- Order prices and totals are computed only in the database (`create_order` reads the `products` table); the browser sends product ids and quantities only — so customers cannot change prices.
+- Orders are never readable by anon: customers track orders through the `track_order` function (order number + last 4 phone digits) which returns no personal data; admins read via RLS + `has_role`.
+- Order status changes go through `admin_set_status`, which checks the admin role and enforces the allowed transitions — so the panel cannot skip steps.
+- Admin roles live in `public.user_roles`; public sign-up is disabled and admins are added by the owner — so no visitor can create staff accounts.
+- Form rules live in `src/lib/checkout-schema.ts` and are shared by the browser and server functions — one source for validation.
+- Security headers are added in `src/server.ts`; frame restrictions are left out because the editor previews the app in an iframe.

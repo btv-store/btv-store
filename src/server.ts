@@ -44,6 +44,27 @@ function isH3SwallowedErrorBody(body: string): boolean {
   }
 }
 
+// Baseline security headers for every response. Framing is left to the hosting layer
+// because the Lovable editor previews the app inside an iframe.
+const SECURITY_HEADERS: Record<string, string> = {
+  "X-Content-Type-Options": "nosniff",
+  "Referrer-Policy": "strict-origin-when-cross-origin",
+  "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+  "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+};
+
+function withSecurityHeaders(response: Response): Response {
+  const headers = new Headers(response.headers);
+  for (const [name, value] of Object.entries(SECURITY_HEADERS)) {
+    if (!headers.has(name)) headers.set(name, value);
+  }
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
 // Hosting compresses every response at the edge. Never compress a body (gzip, brotli,
 // CompressionStream) or set content-encoding here or in a server route: the body gets encoded
 // twice and renders garbled.
@@ -52,7 +73,7 @@ export default {
     try {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
-      return await normalizeCatastrophicSsrResponse(response);
+      return withSecurityHeaders(await normalizeCatastrophicSsrResponse(response));
     } catch (error) {
       console.error(error);
       return new Response(renderErrorPage(), {
